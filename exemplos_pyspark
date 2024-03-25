@@ -1,0 +1,27 @@
+from numpy import NaN
+from sqlalchemy import desc, null
+import pyspark
+from pyspark.sql import SparkSession
+from delta import *
+from pyspark.sql.window import Window
+from pyspark.sql.functions import row_number, col
+
+spark = SparkSession.builder.appName('exercicios_spark').getOrCreate()
+
+columns = ['id', 'name', 'salary', 'department', 'gender']
+data = [(1, 'joao', 55000, 'IT', 'M'),
+(2, 'maria', 43000, 'Marketing', 'F'),
+(3, 'jose', 35000, 'IT', 'M'),
+(3, 'jose', 35000, 'IT', 'M'),
+(4, 'roberto', 34000, None, 'M')]
+
+df = spark.createDataFrame(data).toDF(*columns)
+print (df.show())
+
+1 - Deletar linhas duplicadas de um createDataFrame
+
+df.dropDuplicates().show()
+
+2 - Imprimir as informações do funcionario que tem o maior salario do departamento de IT
+
+group = Window.partitionBy('department').orderBy(col('salary').desc())
