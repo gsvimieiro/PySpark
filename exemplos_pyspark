@@ -5,6 +5,7 @@ from pyspark.sql import SparkSession
 from delta import *
 from pyspark.sql.window import Window
 from pyspark.sql.functions import row_number, col, current_date, date_format
+from pyspark.sql.functions import max as max_, min as min_, avg, sum, when
 
 spark = SparkSession.builder.appName('exercicios_spark').getOrCreate()
 
@@ -45,3 +46,64 @@ df.select(date_format(current_date(), 'dd/MM/yyyy').alias('data_convertida')).sh
 
 6 - Imprimir o maior, menor, valor medio e a soma de todos os salarios por departamento
 
+group = Window.partitionBy('department').orderBy('salary')
+
+df_with_row_number = df.withColumn('rn', row_number().over(group))
+
+df_salary = df_with_row_number.groupBy('department') \
+                                          .agg(avg('salary').alias('media'),
+                                               max_('salary').alias('maximo'),
+                                               min_('salary').alias('minimo'),
+                                               sum('salary').alias('soma'))
+
+
+7 - Imprimir F quando for Female e M quando for Male
+
+df.select(col('*'),
+          when(col('gender') == 'M', 'Male') \
+              .when(col('gender') == 'F', 'Female') \
+              .when(col('gender').isNull(), '') \
+              .otherwise(col('gender')) \
+              .alias('new_gender')) \
+    .show()
+
+8 - Imprima o funcionario com maior salario por departamento
+
+group = Window.partitionBy('department').orderBy('salary').desc()
+
+df.withColumn('rn', row_number().over(group))\
+    .where(col('department').isNotNull())\
+    .where(col('rn')==1)\
+    .show()
+
+10 - Selecione todos os empregados e o nome dos departamentos
+
+a - somente funcionarios com departamento cadastrado
+b - funcionarios que podem não ter departamento cadastrado
+c - departamento que podem nao ter funcionario cadastrado
+
+
+columns = ['id', 'name', 'salary', 'dept_id', 'gender']
+data = [(1, 'joao', 55000, 10, 'M'),
+(2, 'maria', 43000, 20, 'F'),
+(3, 'jose', 35000, 20, 'M'),
+(3, 'jose', 35000, 20, 'M'),
+(5, 'alberto', 30000, 40, 'M'),
+(6, 'roberto', 34000, None, 'M')]
+
+emp = spark.createDataFrame(data).toDF(*columns)
+
+
+columns = ['dept_id', 'dept_name']
+data = [(10, 'Finance'),
+(20, 'Marketing'),
+(30, 'Sales'),
+(40, 'IT')]
+
+dept = spark.createDataFrame(data).toDF(*columns)
+
+a - emp.join(dept, emp.dept_id== dept.dept_id, "inner").show()
+
+b - emp.join(dept, emp.dept_id == dept.dept_id, 'left').show()
+
+c- emp.join(dept, emp.dept_id == dept.dept_id, 'right').show()
